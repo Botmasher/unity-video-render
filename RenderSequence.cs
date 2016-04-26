@@ -4,40 +4,43 @@ using System;
 
 public class RenderSequence : MonoBehaviour {
 
-	/* FOR RENDERING SCENE */
+	/* VARIABLES FOR RENDERING SCENE */
 
 	// settings for rendering image files
 	public int imageWidth=1280;
 	public int imageHeight=720;
-	[Range(0,25)]public int renderDepth=5;
+	//[Range(0,25)]public int renderDepth=5; // acceptable depths are 0, 16, 24 (24 has stencil)
 
 	// file extension selected in inspector
 	public enum imageFileTypes {PNG, JPG};
 	public imageFileTypes fileExtensions;
 
-	// counter to individuate file names
-	public static int renderCounter;
-
 	// reference to render camera
 	public Camera renderCamera;
 
-	/*	FOR CAPTURING SCREEN INSTEAD
+	// changing time to decouple game from realtime and pause while rendering
+	public int frameRate = 25;
+	private float timeScale;
+
+	/*	VARIABLES FOR CAPTURING SCREEN INSTEAD
 	 *	   /!\	VERY sensitive to visible player sizing in the editor
 	 *			regardless of the "screen size" you have set
 	 */
 	// set the frames per second of captured footage (not renderer)
 	public bool captureScreenInstead=true;
-	public int frameRate = 25;
+
 	// create directory path to save files
 	private string destinationFolder;
 
 
 	void Start() {
 
+		// change framerate to step through frames instead of realtime
+		Time.captureFramerate = frameRate;
+		timeScale = Time.timeScale;
+
 		// SCREENCAP SETUP
 		if (captureScreenInstead) {
-			// change framerate to step through frames instead of realtime
-			Time.captureFramerate = frameRate;
 			// verify camera is not disabled
 			renderCamera.gameObject.SetActive (true);
 			// setup file path for saving screenshots
@@ -50,7 +53,6 @@ public class RenderSequence : MonoBehaviour {
 		} else {
 			// initial setup for render
 			renderCamera.gameObject.SetActive (false);		// disable camera in order to render
-			renderCounter = 0;
 		}
 	}
 	
@@ -60,7 +62,6 @@ public class RenderSequence : MonoBehaviour {
 		// render and save a certain number of files
 		if (!captureScreenInstead) {
 			StartCoroutine ("RenderAndSave");
-			renderCounter++;
 		}
 		// ignore render and take screenshots instead
 		else {
@@ -87,10 +88,14 @@ public class RenderSequence : MonoBehaviour {
 	 */
 	public IEnumerator RenderAndSave () {
 
-		yield return new WaitForEndOfFrame ();
+		// pause time while rendering frame
+		Time.timeScale = 0;
+
+		yield return new WaitForEndOfFrame (); 	// wait until all events finish (starts at 2)
 
 		// create a new render texture
-		RenderTexture renderTex = new RenderTexture (imageWidth, imageHeight, renderDepth, RenderTextureFormat.ARGB32);
+		RenderTexture renderTex = new RenderTexture (imageWidth, imageHeight, 24, RenderTextureFormat.ARGBFloat);
+		renderTex.antiAliasing = 4;
 		renderCamera.targetTexture = renderTex;
 
 		// create image of same dimensions to save render as texture
@@ -114,15 +119,19 @@ public class RenderSequence : MonoBehaviour {
 		string fileName;
 		if (fileExtensions == 0) {
 			binary = img.EncodeToPNG ();
-			fileName = GenerateFileName (renderCounter.ToString(),"png");
+			// build name based on current frame, subtracting in compensation for WaitForEndOfFrame
+			fileName = GenerateFileName ((Time.frameCount-1).ToString(), "png");
 		} else {
 			binary = img.EncodeToJPG ();
-			fileName = GenerateFileName (renderCounter.ToString(),"jpg");
+			fileName = GenerateFileName ((Time.frameCount-1).ToString(), "jpg");
 		}
 			
 		// output the image 
 		string filePath = Application.dataPath+"/"+fileName;
 		System.IO.File.WriteAllBytes (filePath, binary);
+
+		// unpause to move forward a frame (since calling this coroutine again will pause)
+		Time.timeScale = timeScale;
 
 		yield return null;
 	}
