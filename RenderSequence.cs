@@ -7,13 +7,16 @@ public class RenderSequence : MonoBehaviour {
 	/* VARIABLES FOR RENDERING SCENE */
 
 	// settings for rendering image files
-	public int imageWidth=1280;
-	public int imageHeight=720;
-	//[Range(0,25)]public int renderDepth=5; // acceptable depths are 0, 16, 24 (24 has stencil)
+	public int imageWidth=1280;		// image resolution (used by render but not screencap)
+	public int imageHeight=720;		// image resolution (used by render but not screencap)
+	//[Range(0,25)]public int renderDepth=16; // acceptable depths are 0, 16, 24 (24 has stencil)
+	public int startFrame=1;		// the first frame to render
+	public int endFrame=500;		// the final frame to render
+	private bool captureThisFrame;	// uses start and end frames to determine if a frame should be rendered
 
 	// file extension selected in inspector
-	public enum imageFileTypes {PNG, JPG};
-	public imageFileTypes fileExtensions;
+	public enum ImageFileTypes {PNG, JPG};
+	public ImageFileTypes fileExtensions;
 
 	// reference to render camera
 	public Camera renderCamera;
@@ -59,16 +62,27 @@ public class RenderSequence : MonoBehaviour {
 
 	void Update () {
 
+		// check that current frame is among the frames to be rendered
+		if (Time.frameCount <= endFrame && Time.frameCount >= startFrame) {
+			captureThisFrame = true;
+		} else {
+			captureThisFrame = false;
+		}
+
 		// render and save a certain number of files
-		if (!captureScreenInstead) {
+		if (!captureScreenInstead && captureThisFrame) {
 			StartCoroutine ("RenderAndSave");
 		}
 		// ignore render and take screenshots instead
-		else {
-			Application.CaptureScreenshot (destinationFolder + string.Format ("{0}.png", Time.frameCount), 1);
-			Debug.Log (string.Format("Screen saved: {0}.png", Time.frameCount));
+		else if (captureScreenInstead && captureThisFrame) {
+			StartCoroutine (TakeScreenShot ());
 		}
-
+		// notify console that rendering is not currently happening
+		else if (Time.frameCount > endFrame) {
+			Debug.Log ("Rendering is FINISHED!");
+		} else {
+			Debug.Log ("Waiting to render...");
+		}
 	}
 
 
@@ -78,6 +92,27 @@ public class RenderSequence : MonoBehaviour {
 	public string GenerateFileName (string identifier, string extension) {
 		string fileName = string.Format ("{0}.{1}", identifier, extension);
 		return fileName;
+	}
+
+
+	/**
+	 *	Pause, take a screenshot of the current frame, unpause
+	 */
+	public IEnumerator TakeScreenShot () {
+
+		// stop time and wait for everything in this frame to update
+		Time.timeScale = 0;
+		yield return new WaitForEndOfFrame ();
+
+		// name and grab the screenshot
+		string screenshotName = string.Format ("{0}.png", Time.frameCount);
+		Application.CaptureScreenshot (destinationFolder + screenshotName, 1);
+		Debug.Log (string.Format("Screen saved: {0}", screenshotName));
+
+		// start time again to advance to the next frame
+		Time.timeScale = timeScale;
+		yield return null;
+
 	}
 
 
@@ -94,7 +129,7 @@ public class RenderSequence : MonoBehaviour {
 		yield return new WaitForEndOfFrame (); 	// wait until all events finish (starts at 2)
 
 		// create a new render texture
-		RenderTexture renderTex = new RenderTexture (imageWidth, imageHeight, 24, RenderTextureFormat.ARGBFloat);
+		RenderTexture renderTex = new RenderTexture (imageWidth, imageHeight, 24, RenderTextureFormat.RGB565);
 		renderTex.antiAliasing = 4;
 		renderCamera.targetTexture = renderTex;
 
@@ -117,13 +152,13 @@ public class RenderSequence : MonoBehaviour {
 		// turn image into binary based on file type selected in inspector
 		byte[] binary;
 		string fileName;
-		if (fileExtensions == 0) {
+		if (fileExtensions == ImageFileTypes.PNG) {
 			binary = img.EncodeToPNG ();
 			// build name based on current frame, subtracting in compensation for WaitForEndOfFrame
-			fileName = GenerateFileName ((Time.frameCount-1).ToString(), "png");
+			fileName = GenerateFileName ((Time.frameCount - 1).ToString (), "png");
 		} else {
 			binary = img.EncodeToJPG ();
-			fileName = GenerateFileName ((Time.frameCount-1).ToString(), "jpg");
+			fileName = GenerateFileName ((Time.frameCount - 1).ToString (), "jpg");
 		}
 			
 		// output the image 
@@ -137,3 +172,4 @@ public class RenderSequence : MonoBehaviour {
 	}
 
 }
+
