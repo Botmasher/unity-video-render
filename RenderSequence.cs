@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using System;
 
@@ -44,7 +44,13 @@ public class RenderSequence : MonoBehaviour {
 		sceneCamera = Camera.main;
 		renderCameraObject = new GameObject ("Render Camera");
 		renderCamera = renderCameraObject.AddComponent<Camera> ();
+		renderCameraObject.AddComponent <GUILayer> ();
+		renderCameraObject.AddComponent <UnityStandardAssets.ImageEffects.DepthOfField> ();
 		renderCameraObject.transform.parent = sceneCamera.transform;
+		renderCamera.depth = sceneCamera.depth - 1;
+		renderCamera.clearFlags = CameraClearFlags.Depth;
+		renderCamera.fieldOfView = 40;
+		renderCamera.tag = "MainCamera";
 
 		// change framerate to step through frames instead of realtime
 		Time.captureFramerate = frameRate;
