@@ -18,8 +18,10 @@ public class RenderSequence : MonoBehaviour {
 	public enum ImageFileTypes {PNG, JPG};
 	public ImageFileTypes fileExtensions;
 
-	// reference to render camera
-	public Camera renderCamera;
+	// reference to render cameras
+	private Camera sceneCamera;				// "main" camera that renders to game views and takes screenshots
+	private GameObject renderCameraObject;	// gameobject to hold new created camera
+	private Camera renderCamera;			// camera for render textures (cannot also be enabled during play)
 
 	// changing time to decouple game from realtime and pause while rendering
 	public int frameRate = 25;
@@ -37,6 +39,12 @@ public class RenderSequence : MonoBehaviour {
 
 
 	void Start() {
+
+		// assign scene cameras, create render camera and parent render camera to main camera
+		sceneCamera = Camera.main;
+		renderCameraObject = new GameObject ("Render Camera");
+		renderCamera = renderCameraObject.AddComponent<Camera> ();
+		renderCameraObject.transform.parent = sceneCamera.transform;
 
 		// change framerate to step through frames instead of realtime
 		Time.captureFramerate = frameRate;
@@ -172,4 +180,3 @@ public class RenderSequence : MonoBehaviour {
 	}
 
 }
-
