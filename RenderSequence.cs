@@ -40,18 +40,34 @@ public class RenderSequence : MonoBehaviour {
 
 	void Start() {
 
-		// assign scene cameras, create render camera and parent render camera to main camera
+		/* Assign, create and tweak cameras for full RENDER only */
+		// scene camera
 		sceneCamera = Camera.main;
-		renderCameraObject = new GameObject ("Render Camera");
-		renderCamera = renderCameraObject.AddComponent<Camera> ();
-		renderCameraObject.AddComponent <GUILayer> ();
-		renderCameraObject.AddComponent <UnityStandardAssets.ImageEffects.DepthOfField> ();
-		renderCameraObject.transform.parent = sceneCamera.transform;
-		renderCamera.depth = sceneCamera.depth - 1;
-		renderCamera.clearFlags = CameraClearFlags.Depth;
-		renderCamera.fieldOfView = 40;
-		renderCamera.tag = "MainCamera";
+		// render camera for full RENDER only
+		if (!captureScreenInstead) {
+			renderCameraObject = new GameObject ("Render Camera");
+			renderCamera = renderCameraObject.AddComponent<Camera> ();
+			// render camera relation to main camera
+			renderCameraObject.transform.position = sceneCamera.transform.position;
+			renderCameraObject.transform.parent = sceneCamera.transform;
+			// render camera basic settings 
+			renderCamera.depth = sceneCamera.depth + 1;
+			renderCamera.nearClipPlane = 0.5f;
+			renderCamera.farClipPlane = 500f;
+			renderCamera.clearFlags = CameraClearFlags.Depth;
+			renderCamera.fieldOfView = 40;
+			// render camera vfx depth of field settings
+			UnityStandardAssets.ImageEffects.DepthOfField renderDoF = renderCameraObject.AddComponent <UnityStandardAssets.ImageEffects.DepthOfField> ();
+			renderDoF.aperture = 0.6f;
+			renderDoF.focalSize = 0.4f;
+			renderDoF.focalLength = 5f;
+		/* Assign and tweak camera for SCREENCAP instead - implicitly renders with main camera */
+		} else {
+			renderCamera = sceneCamera;
+		}
 
+
+		/* Time adjustments for snapping frame by frame */
 		// change framerate to step through frames instead of realtime
 		Time.captureFramerate = frameRate;
 		timeScale = Time.timeScale;
